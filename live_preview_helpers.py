@@ -59,6 +59,7 @@ def flux_pipe_call_that_returns_an_iterable_of_images(
     return_dict: bool = True,
     joint_attention_kwargs: Optional[Dict[str, Any]] = None,
     max_sequence_length: int = 512,
+    good_vae: Optional[Any] = None,
 ):
     height = height or self.default_sample_size * self.vae_scale_factor
     width = width or self.default_sample_size * self.vae_scale_factor
@@ -156,10 +157,10 @@ def flux_pipe_call_that_returns_an_iterable_of_images(
         yield self.image_processor.postprocess(image, output_type=output_type)[0]
         torch.cuda.empty_cache()
 
-    # Final image
+    # Final image using good_vae
     latents = self._unpack_latents(latents, height, width, self.vae_scale_factor)
-    latents = (latents / self.vae.config.scaling_factor) + self.vae.config.shift_factor
-    image = self.vae.decode(latents, return_dict=False)[0]
+    latents = (latents / good_vae.config.scaling_factor) + good_vae.config.shift_factor
+    image = good_vae.decode(latents, return_dict=False)[0]
     self.maybe_free_model_hooks()
     torch.cuda.empty_cache()
-    return self.image_processor.postprocess(image, output_type=output_type)[0], 0    
+    yield self.image_processor.postprocess(image, output_type=output_type)[0]
