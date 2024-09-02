@@ -11,6 +11,7 @@ dtype = torch.bfloat16
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 taef1 = AutoencoderTiny.from_pretrained("madebyollin/taef1", torch_dtype=dtype).to(device)
+good_vae = AutoencoderKL.from_pretrained(base_model, subfolder="vae", torch_dtype=dtype).to(device)
 pipe = DiffusionPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", torch_dtype=dtype, vae=taef1).to(device)
 torch.cuda.empty_cache()
 
@@ -33,6 +34,7 @@ def infer(prompt, seed=42, randomize_seed=False, width=1024, height=1024, guidan
             height=height,
             generator=generator,
             output_type="pil",
+            good_vae=good_vae,
         ):
             yield img, seed
     
