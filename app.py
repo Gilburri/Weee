@@ -12,7 +12,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 pipe = DiffusionPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", torch_dtype=torch.bfloat16).to(device)
 
 MAX_SEED = np.iinfo(np.int32).max
-MAX_IMAGE_SIZE = 2048
+MAX_IMAGE_SIZE = 2560
 
 @spaces.GPU(duration=190)
 def infer(prompt, seed=42, randomize_seed=False, width=1024, height=1024, guidance_scale=5.0, num_inference_steps=28, progress=gr.Progress(track_tqdm=True)):
