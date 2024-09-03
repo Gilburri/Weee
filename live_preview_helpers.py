@@ -148,13 +148,13 @@ def flux_pipe_call_that_returns_an_iterable_of_images(
             joint_attention_kwargs=self.joint_attention_kwargs,
             return_dict=False,
         )[0]
-        latents = self.scheduler.step(noise_pred, t, latents, return_dict=False)[0]
-
         # Yield intermediate result
         latents_for_image = self._unpack_latents(latents, height, width, self.vae_scale_factor)
         latents_for_image = (latents_for_image / self.vae.config.scaling_factor) + self.vae.config.shift_factor
         image = self.vae.decode(latents_for_image, return_dict=False)[0]
         yield self.image_processor.postprocess(image, output_type=output_type)[0]
+        
+        latents = self.scheduler.step(noise_pred, t, latents, return_dict=False)[0]
         torch.cuda.empty_cache()
 
     # Final image using good_vae
