@@ -3,32 +3,41 @@ import numpy as np
 import random
 import spaces
 import torch
-from diffusers import  DiffusionPipeline, FlowMatchEulerDiscreteScheduler
+from diffusers import  DiffusionPipeline, FlowMatchEulerDiscreteScheduler, AutoencoderTiny, AutoencoderKL
 from transformers import CLIPTextModel, CLIPTokenizer,T5EncoderModel, T5TokenizerFast
+from live_preview_helpers import calculate_shift, retrieve_timesteps, flux_pipe_call_that_returns_an_iterable_of_images
 
 dtype = torch.bfloat16
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-pipe = DiffusionPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", torch_dtype=torch.bfloat16).to(device)
+taef1 = AutoencoderTiny.from_pretrained("madebyollin/taef1", torch_dtype=dtype).to(device)
+good_vae = AutoencoderKL.from_pretrained("black-forest-labs/FLUX.1-dev", subfolder="vae", torch_dtype=dtype).to(device)
+pipe = DiffusionPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", torch_dtype=dtype, vae=taef1).to(device)
+torch.cuda.empty_cache()
 
 MAX_SEED = np.iinfo(np.int32).max
 MAX_IMAGE_SIZE = 2048
 
-@spaces.GPU(duration=190)
-def infer(prompt, seed=42, randomize_seed=False, width=1024, height=1024, guidance_scale=5.0, num_inference_steps=28, progress=gr.Progress(track_tqdm=True)):
+pipe.flux_pipe_call_that_returns_an_iterable_of_images = flux_pipe_call_that_returns_an_iterable_of_images.__get__(pipe)
+
+@spaces.GPU(duration=75)
+def infer(prompt, seed=42, randomize_seed=False, width=1024, height=1024, guidance_scale=3.5, num_inference_steps=28, progress=gr.Progress(track_tqdm=True)):
     if randomize_seed:
         seed = random.randint(0, MAX_SEED)
     generator = torch.Generator().manual_seed(seed)
-    image = pipe(
-        prompt = prompt, 
-        width = width,
-        height = height,
-        num_inference_steps = num_inference_steps, 
-        generator = generator,
-        guidance_scale=guidance_scale
-    ).images[0] 
-    return image, seed
- 
+    
+    for img in pipe.flux_pipe_call_that_returns_an_iterable_of_images(
+            prompt=prompt,
+            guidance_scale=guidance_scale,
+            num_inference_steps=num_inference_steps,
+            width=width,
+            height=height,
+            generator=generator,
+            output_type="pil",
+            good_vae=good_vae,
+        ):
+            yield img, seed
+    
 examples = [
     "a tiny astronaut hatching from an egg on the moon",
     "a cat holding a sign that says hello world",
