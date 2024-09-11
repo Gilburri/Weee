@@ -37,6 +37,8 @@ def infer(prompt, seed=42, randomize_seed=False, width=1024, height=1024, guidan
             good_vae=good_vae,
         ):
             yield img, seed
+
+    gr.Info("Image Generation Completed")
     
 examples = [
     "a tiny astronaut hatching from an egg on the moon",
